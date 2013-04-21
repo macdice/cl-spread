@@ -1,0 +1,70 @@
+Common Lisp bindings for the Spread Toolkit (using CFFI)
+
+This is something that I started working on in 2009 for a personal
+project, but didn't use for anything, thinking that I should really
+write a native Lisp client that uses sockets directly rather than
+using CFFI.  I did finish up writing a native Spread client for Emacs
+Lisp[1], as an amusing hack, but never got around to it for CL.  In
+2013 I found myself playing with Spread again, and figured I should
+push this to Github as is.
+
+Google tells me there was another project using the same name which
+does exactly the same thing.  It appears to have been renamed to
+"network.spread"[2].  It looks much more complete, and is written in
+better Lisp, and is apparently actively maintained and used.  So you
+should probably go and look at that project instead!
+
+See http://www.spread.org/ for more about the Spread Toolkit and what 
+the various function calls mean.
+
+Examples of use (assuming a local Spread daemon on the default port):
+
+;; A simple program to send 10 messages and disconnect.
+(spread:with-mailbox (mailbox)
+  (dotimes (i 10)
+    (spread:multicast mailbox :safe "MY_GROUP" 0 (format nil "FOO ~a" i) nil)))
+
+;; A simple program to receive and print up to 5 messages (blocking).
+(spread:with-mailbox (mailbox)
+  (spread:join mailbox "MY_GROUP")
+  (dotimes (i 5)
+    (let ((envelope (spread:receive mailbox)))
+      (if (spread:regular-message? envelope)
+          (format t "Got message: ~a~%" (spread:envelope-message envelope))
+          (format t "Got membership message~%")))))
+
+In a real program, you probably want something more sophisticated than
+blocking until a message arrives -- see the function spread:wait which has
+an SBCL-specific file-descriptor readiness wait.
+
+DONE:
+- multicasting to single groups
+- joining and leaving groups
+- receiving messages
+- (with-mailbox ...) macro
+
+QUESTIONABLE:
+- I'm using Scheme-style naming (predicates with '?' rather than '-p') and
+  I like it
+
+TODO:
+- test with Lisps other than SBCL
+- test with Spread 4.x
+- find tidy syntax for dispatching incoming regular and membership messages
+- multicast to multiple groups
+- option to reuse message buffer rather than allocating new strings
+- non-blocking receive
+- test membership messages
+- support high performance usage by providing a mode where RECEIVE writes
+  into a recycled byte vector (like Plokami), rather than allocating new 
+  envelopes and messages
+- support Windows?
+- support the Java Spread client library for ABCL (?)
+- implement the wire protocol directly instead of using CFFI!
+- I'm converting the incoming message to a string ignoring encoding
+  issues for now; in fact the data might be a binary message so this needs
+  to be improved (optional binary bode with byte vectors?)
+- the default private group string generation is stupid (a random number)
+
+[1] https://github.com/macdice/protocolarium/blob/master/spread.el
+[2] https://github.com/scymtym/network.spread
